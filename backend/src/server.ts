@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-app.set('trust proxy', 1);
+
 import cors from 'cors'; import session from 'express-session'; import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { ExpressAdapter } from '@bull-board/express'; import { createBullBoard } from '@bull-board/api'; import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
@@ -8,6 +8,7 @@ import { RedisStore } from 'connect-redis';
 import { prisma, redis } from './lib/clients'; import { emailQueue } from './lib/queue'; import { env } from './config/env';
 import emailRoutes from './routes/email.routes';
 const app=express();
+app.set('trust proxy', 1);
 app.use(cors({origin:env.frontendUrl,credentials:true})); app.use(express.json({limit:'10mb'})); app.use(session({store:new RedisStore({client:redis}),secret:process.env.SESSION_SECRET||'local-dev-only-change-me',resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite: process.env.NODE_ENV === 'production'
   ? 'none'
   : 'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000}}));
