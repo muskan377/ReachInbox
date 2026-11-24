@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  googleId         String   @unique
+  name             String
+  email            String   @unique
+  avatar           String?
+  slackAccessToken String?
+  slackTeamName    String?
+  slackWebhookUrl  String?
+  emails           Email[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Email {
+  id             String      @id @default(cuid())
+  idempotencyKey String      @unique
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipient      String
+  subject        String
+  body           String      @db.Text
+  senderEmail    String
+  hourlyLimit    Int         @default(200)
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  status         EmailStatus @default(SCHEDULED)
+  error          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([userId, status, scheduledAt])
+  @@index([senderEmail, scheduledAt])
+}
+
+enum EmailStatus {
+  SCHEDULED
+  PROCESSING
+  SENT
+  FAILED
+}

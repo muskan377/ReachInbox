@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { prisma } from '../lib/clients';
+import { requireAuth, AuthedRequest } from '../middleware/auth';
+import { scheduleBatch } from '../services/scheduler';
+import { elastic } from '../lib/clients';
+const router=Router(); router.use(requireAuth);
+const scheduleSchema=z.object({recipients:z.array(z.string().email()).min(1).max(5000),subject:z.string().min(1).max(300),body:z.string().min(1),startAt:z.string(),delaySeconds:z.number().min(0).max(3600),hourlyLimit:z.number().int().min(1).max(100000).optional(),senderEmail:z.string().email()});
+router.post('/schedule',async(req:AuthedRequest,res)=>{try{const input=scheduleSchema.parse(req.body);const rows=await scheduleBatch(req.userId!,input);res.status(201).json({count:rows.length,emails:rows});}catch(e){res.status(400).json({error:e instanceof Error?e.message:'Invalid request'});}});
+router.get('/',async(req:AuthedRequest,res)=>{const status=String(req.query.status||'SCHEDULED').toUpperCase();const allowed=['SCHEDULED','PROCESSING','SENT','FAILED'];if(!allowed.includes(status))return res.status(400).json({error:'Invalid status'});const emails=await prisma.email.findMany({where:{userId:req.userId,status:status as any},orderBy:{createdAt:'desc'},take:500});res.json({emails});});
+router.get('/search',async(req:AuthedRequest,res)=>{const q=String(req.query.q||'').trim();if(!q)return res.json({emails:[]});try{const result=await elastic.search({index:'reachinbox-emails',query:{bool:{must:[{multi_match:{query:q,fields:['recipient','subject','body']}}],filter:[{term:{'userId.keyword':req.userId}}]}},size:50});res.json({emails:result.hits.hits.map(h=>h._source)});}catch{res.status(503).json({error:'Search index unavailable'});}});
+export default router;
