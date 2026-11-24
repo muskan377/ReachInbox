@@ -8,7 +8,9 @@ import { RedisStore } from 'connect-redis';
 import { prisma, redis } from './lib/clients'; import { emailQueue } from './lib/queue'; import { env } from './config/env';
 import emailRoutes from './routes/email.routes';
 const app=express();
-app.use(cors({origin:env.frontendUrl,credentials:true})); app.use(express.json({limit:'10mb'})); app.use(session({store:new RedisStore({client:redis}),secret:process.env.SESSION_SECRET||'local-dev-only-change-me',resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000}}));
+app.use(cors({origin:env.frontendUrl,credentials:true})); app.use(express.json({limit:'10mb'})); app.use(session({store:new RedisStore({client:redis}),secret:process.env.SESSION_SECRET||'local-dev-only-change-me',resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite: process.env.NODE_ENV === 'production'
+  ? 'none'
+  : 'lax',secure:process.env.NODE_ENV==='production',maxAge:7*86400000}}));
 app.use(passport.initialize());app.use(passport.session());
 passport.serializeUser((user:any,done)=>done(null,user.id));passport.deserializeUser(async(id:string,done)=>{try{done(null,await prisma.user.findUnique({where:{id}}));}catch(e){done(e);}});
 if(process.env.GOOGLE_CLIENT_ID&&process.env.GOOGLE_CLIENT_SECRET){passport.use(new GoogleStrategy({clientID:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET,callbackURL:process.env.GOOGLE_CALLBACK_URL||'http://localhost:4000/auth/google/callback'},async(_a,_r,profile,done)=>{try{const email=profile.emails?.[0]?.value;if(!email)return done(new Error('Google did not provide an email'));const user=await prisma.user.upsert({where:{googleId:profile.id},update:{name:profile.displayName,email,avatar:profile.photos?.[0]?.value},create:{googleId:profile.id,name:profile.displayName,email,avatar:profile.photos?.[0]?.value}});done(null,user);}catch(e){done(e as Error);}}));}
