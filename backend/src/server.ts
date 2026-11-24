@@ -1,5 +1,7 @@
 import 'dotenv/config';
-import express from 'express'; import cors from 'cors'; import session from 'express-session'; import passport from 'passport';
+import express from 'express';
+app.set('trust proxy', 1);
+import cors from 'cors'; import session from 'express-session'; import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { ExpressAdapter } from '@bull-board/express'; import { createBullBoard } from '@bull-board/api'; import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { RedisStore } from 'connect-redis';
